@@ -12,54 +12,57 @@ CHUNK_SIZE = 1024 * 1024  # 1MB per chunk
 logging.basicConfig(level=logging.DEBUG)  # Enable logging for debugging
 
 @router.post("/chunk-resume")
-async def upload_file_resumable(file: UploadFile = File(...), db: Session = Depends(get_db)):
+async def upload_file_resumable(files: list[UploadFile] = File(...), db: Session = Depends(get_db)):
     try:
-        # Check if the file exists in the database
-        file_metadata = db.query(FileMetadata).filter(FileMetadata.filename == file.filename).first()
-
-        if file_metadata:
-            # File already exists, resume from the last uploaded chunk
-            uploaded_chunks = file_metadata.uploaded_chunks
-            file_size = file_metadata.file_size
-        else:
-            # New upload, initialize metadata
-            uploaded_chunks = 0
-            file_size = len(await file.read())  # Calculate file size for new files
-            file_metadata = FileMetadata(filename=file.filename, file_size=file_size)
-            db.add(file_metadata)
-            db.commit()
-
         # Create storage directory if it doesn't exist
         os.makedirs(STORAGE_PATH, exist_ok=True)
 
-        file_path = os.path.join(STORAGE_PATH, file.filename)
+      # Loop through each file
+        for file in files:
 
-        # Open the file in append mode if resuming
-        with open(file_path, "ab") as f:
-            # Skip the chunks already uploaded
-            f.seek(uploaded_chunks * CHUNK_SIZE)
+          # Check if the file exists in the database
+          file_metadata = db.query(FileMetadata).filter(FileMetadata.filename == file.filename).first()
 
-            while chunk := await file.read(CHUNK_SIZE):
-                f.write(chunk)
-                uploaded_chunks += 1  # Increment chunk count after each write
+          if file_metadata:
+              # File already exists, resume from the last uploaded chunk
+              uploaded_chunks = file_metadata.uploaded_chunks
+              file_size = file_metadata.file_size
+          else:
+              # New upload, initialize metadata
+              uploaded_chunks = 0
+              file_size = len(await file.read())  # Calculate file size for new files
+              file_metadata = FileMetadata(filename=file.filename, file_size=file_size)
+              db.add(file_metadata)
+              db.commit()
 
-                # Update metadata in the database
-                file_metadata.uploaded_chunks = uploaded_chunks
-                db.commit()
+          file_path = os.path.join(STORAGE_PATH, file.filename)
 
-                # Calculate and log the percentage progress
-                progress = (uploaded_chunks * CHUNK_SIZE / file_size) * 100
-                logging.debug(f"Uploading {file.filename}: {progress:.2f}% completed.")
+          # Open the file in append mode if resuming
+          with open(file_path, "ab") as f:
+              # Skip the chunks already uploaded
+              f.seek(uploaded_chunks * CHUNK_SIZE)
 
-                # If the uploaded chunks cover the full file size, stop
-                if uploaded_chunks * CHUNK_SIZE >= file_size:
-                    break
+              while chunk := await file.read(CHUNK_SIZE):
+                  f.write(chunk)
+                  uploaded_chunks += 1  # Increment chunk count after each write
 
-        # After upload completion, update the status in the database
-        file_metadata.upload_status = "completed"
-        db.commit()
+                  # Update metadata in the database
+                  file_metadata.uploaded_chunks = uploaded_chunks
+                  db.commit()
 
-        return {"message": "Chunk uploaded successfully", "file_path": file_path}
+                  # Calculate and log the percentage progress
+                  progress = (uploaded_chunks * CHUNK_SIZE / file_size) * 100
+                  logging.debug(f"Uploading {file.filename}: {progress:.2f}% completed.")
+
+                  # If the uploaded chunks cover the full file size, stop
+                  if uploaded_chunks * CHUNK_SIZE >= file_size:
+                      break
+
+          # After upload completion, update the status in the database
+          file_metadata.upload_status = "completed"
+          db.commit()
+
+          return {"message": "Chunk uploaded successfully", "file_path": file_path}
 
     except Exception as e:
         logging.error(f"Error uploading file: {e}")
