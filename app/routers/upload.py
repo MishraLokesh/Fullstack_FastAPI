@@ -1,5 +1,6 @@
 from fastapi import APIRouter, UploadFile, File, HTTPException, Depends
 import os
+import logging
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models import FileMetadata
@@ -8,40 +9,7 @@ router = APIRouter()
 
 STORAGE_PATH = "storage"
 CHUNK_SIZE = 1024 * 1024  # 1MB per chunk
-
-@router.post("/")
-async def upload_file(file: UploadFile = File(...), db: Session = Depends(get_db)):
-    try:
-        # Create storage directory if not exists
-        os.makedirs(STORAGE_PATH, exist_ok=True)
-
-        # Save file to disk for now
-        file_path = os.path.join(STORAGE_PATH, file.filename)
-        with open(file_path, "wb") as f:
-            f.write(await file.read())
-
-        # Save file metadata in database
-        file_metadata = FileMetadata(filename=file.filename, file_path=file_path)
-        db.add(file_metadata)
-        db.commit()
-
-        return {"message": "File uploaded successfully", "file_path": file_path}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-@router.post("/chunk")
-async def upload_file_chunk(file: UploadFile = File(...), chunk_size: int = 1024 * 1024):
-    try:
-        os.makedirs(STORAGE_PATH, exist_ok=True)
-        file_path = os.path.join(STORAGE_PATH, file.filename)
-
-        with open(file_path, "ab") as f:  # Append mode for chunks
-            while chunk := await file.read(chunk_size):
-                f.write(chunk)
-
-        return {"message": "Chunk uploaded successfully", "file_path": file_path}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+logging.basicConfig(level=logging.DEBUG)  # Enable logging for debugging
 
 @router.post("/chunk-resume")
 async def upload_file_resumable(file: UploadFile = File(...), db: Session = Depends(get_db)):
@@ -56,7 +24,7 @@ async def upload_file_resumable(file: UploadFile = File(...), db: Session = Depe
         else:
             # New upload, initialize metadata
             uploaded_chunks = 0
-            file_size = file.spool_max_size or len(await file.read())  # Determine total size for new files
+            file_size = len(await file.read())  # Calculate file size for new files
             file_metadata = FileMetadata(filename=file.filename, file_size=file_size)
             db.add(file_metadata)
             db.commit()
@@ -66,10 +34,12 @@ async def upload_file_resumable(file: UploadFile = File(...), db: Session = Depe
 
         file_path = os.path.join(STORAGE_PATH, file.filename)
 
-         # Open the file in append mode if resuming
+        # Open the file in append mode if resuming
         with open(file_path, "ab") as f:
-            chunk = await file.read(CHUNK_SIZE)
-            while chunk:
+            # Skip the chunks already uploaded
+            f.seek(uploaded_chunks * CHUNK_SIZE)
+
+            while chunk := await file.read(CHUNK_SIZE):
                 f.write(chunk)
                 uploaded_chunks += 1  # Increment chunk count after each write
 
@@ -77,17 +47,33 @@ async def upload_file_resumable(file: UploadFile = File(...), db: Session = Depe
                 file_metadata.uploaded_chunks = uploaded_chunks
                 db.commit()
 
-                # Check if we've uploaded all chunks
+                # Calculate and log the percentage progress
+                progress = (uploaded_chunks * CHUNK_SIZE / file_size) * 100
+                logging.debug(f"Uploading {file.filename}: {progress:.2f}% completed.")
+
+                # If the uploaded chunks cover the full file size, stop
                 if uploaded_chunks * CHUNK_SIZE >= file_size:
                     break
 
-                chunk = await file.read(CHUNK_SIZE)
-
-        # After upload completion, update the status
+        # After upload completion, update the status in the database
         file_metadata.upload_status = "completed"
         db.commit()
 
-
         return {"message": "Chunk uploaded successfully", "file_path": file_path}
+
     except Exception as e:
+        logging.error(f"Error uploading file: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/progress/{filename}")
+def get_upload_progress(filename: str, db: Session = Depends(get_db)):
+    file_metadata = db.query(FileMetadata).filter(FileMetadata.filename == filename).first()
+    
+    if not file_metadata:
+        raise HTTPException(status_code=404, detail="File not found")
+
+    total_chunks = file_metadata.total_chunks
+    uploaded_chunks = file_metadata.uploaded_chunks
+    progress = (uploaded_chunks / total_chunks) * 100 if total_chunks else 0
+
+    return {"filename": filename, "uploaded_chunks": uploaded_chunks, "total_chunks": total_chunks, "progress": progress}
