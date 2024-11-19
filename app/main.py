@@ -9,4 +9,4 @@ Base.metadata.create_all(bind=engine)
 
 # Include routers
 app.include_router(upload.router, prefix="/upload", tags=["File Upload"])
-# app.include_router(list_files.router, prefix="/files", tags=["File List"])
+app.include_router(list_files.router, prefix="/files", tags=["File List"])
