@@ -22,7 +22,7 @@ export default function Upload() {
     formData.append("file", selectedFile);
 
     try {
-      const response = await axios.post("http://localhost:8000/minio/upload-to-minio", formData, {
+      const response = await axios.post("http://localhost:8000/upload/chunk-resume", formData, {
         headers: {
           "Content-Type": "multipart/form-data",
         },

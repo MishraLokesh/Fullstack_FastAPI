@@ -8,14 +8,14 @@ export default function Preview() {
 
   useEffect(() => {
     // Fetch list of available files
-    axios.get("http://localhost:8000/minio/list-files")
-      .then((res) => setFiles(res.data.files))
+    axios.get("http://localhost:8000/files/")
+      .then((res) => setFiles(res.data))
       .catch((err) => console.error(err));
   }, []);
 
   const handlePreview = async (filename) => {
     try {
-      const response = await axios.get(`http://localhost:8000/minio/preview-from-minio/${filename}`, {
+      const response = await axios.get(`http://localhost:8000/files/preview/${filename}`, {
         responseType: "blob",
       });
 
@@ -38,7 +38,7 @@ export default function Preview() {
 
   const handleDownload = (filename) => {
     axios({
-      url: `http://localhost:8000/minio/download-from-minio/${filename}`,
+      url: `http://localhost:8000/files/download/${filename}`,
       method: "GET",
       responseType: "blob",
     })
