@@ -13,7 +13,7 @@ RUN npm install
 COPY . /app
 
 # Expose the port Next.js will run on
-EXPOSE 3000
+EXPOSE 3001
 
 # Command to run the Next.js application in production mode
-CMD ["npm", "run", "start"]
+CMD ["npm", "run", "start", "--", "--hostname", "localhost"]
