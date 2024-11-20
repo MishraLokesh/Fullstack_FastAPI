@@ -1,0 +1,31 @@
+services:
+  backend:
+    build:
+      context: ./app
+    container_name: backend
+    ports:
+      - "8000:8000"
+    environment:
+      - MINIO_ENDPOINT=minio:9000
+      - MINIO_ACCESS_KEY=${MINIO_ACCESS_KEY}
+      - MINIO_SECRET_KEY=${MINIO_SECRET_KEY}
+      - MINIO_BUCKET_NAME=${MINIO_BUCKET_NAME}
+    networks:
+      - my_network
+
+  frontend:
+    build:
+      context: ./frontend 
+    container_name: frontend
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://1/27.0.0.1:8000  
+    depends_on:
+      - backend
+    networks:
+      - my_network
+
+networks:
+  my_network:
+    driver: bridge

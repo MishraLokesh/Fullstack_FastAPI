@@ -8,11 +8,14 @@ from app.database import get_db
 from app.models import FileMetadata
 from io import BytesIO
 from minio.error import S3Error
+from dotenv import load_dotenv
+
+load_dotenv()
 
 # MinIO Configuration
 MINIO_ENDPOINT = "127.0.0.1:9000"
-MINIO_ACCESS_KEY = "E73DmxZVLQv5sldAZ7ia"
-MINIO_SECRET_KEY = "lX43QnpE0D6uhka2EwrXDosxoCQylC9uh8UwJAVU"
+MINIO_ACCESS_KEY = os.getenv("MINIO_ACCESS_KEY")
+MINIO_SECRET_KEY = os.getenv("MINIO_SECRET_KEY")
 MINIO_BUCKET_NAME = "lokbucket"
 
 # Initialize MinIO Client
