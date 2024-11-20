@@ -23,32 +23,22 @@ minio_client = Minio(
 )
 
 @router.get("/download/{filename}")
-async def download_file(filename: str, db: Session = Depends(get_db)):
-    """
-    Endpoint to download a file by its filename from MinIO.
-    """
+async def download_file(filename: str):
     try:
-        # Check if the file metadata exists in the database
-        file_metadata = db.query(FileMetadata).filter(FileMetadata.filename == filename).first()
-        if not file_metadata:
-            raise HTTPException(status_code=404, detail="File not found")
-
-        # Check if the file exists in MinIO
+        # Check if the file exists in the MinIO bucket
         if not minio_client.bucket_exists(MINIO_BUCKET_NAME):
-            raise HTTPException(status_code=404, detail="Bucket not found")
-        
-        # Get the file object from MinIO
+            raise HTTPException(status_code=404, detail="Bucket does not exist")
+
+        # Fetch the file from MinIO
         try:
             file_data = minio_client.get_object(MINIO_BUCKET_NAME, filename)
         except Exception as e:
-            raise HTTPException(status_code=404, detail=f"File not found in MinIO: {e}")
+            raise HTTPException(status_code=404, detail=f"File not found: {filename}")
 
-        # Stream the file back to the client
-        return StreamingResponse(
-            BytesIO(file_data.read()),
-            media_type="application/octet-stream",
-            headers={"Content-Disposition": f"attachment; filename={filename}"}
-        )
+        # Send the file to the client
+        return StreamingResponse(file_data, media_type="application/octet-stream", headers={
+            "Content-Disposition": f"attachment; filename={filename}"
+        })
 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error downloading file: {e}")
+        raise HTTPException(status_code=500, detail=str(e))

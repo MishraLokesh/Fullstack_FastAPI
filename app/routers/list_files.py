@@ -1,18 +1,40 @@
-from fastapi import APIRouter, Depends
-from sqlalchemy.orm import Session
-from app.database import get_db
-from app.models import FileMetadata
+from fastapi import APIRouter, HTTPException
+from minio import Minio
 
+# Initialize FastAPI
 router = APIRouter()
 
-@router.get("/")
-def list_files(db: Session = Depends(get_db)):
-    files = db.query(FileMetadata).all()
-    if not files:
-      return {"message": "No files uploaded yet", "files": []}
-    
-    # For debugging, print the files to check if file_path is populated
-    for file in files:
-      print(file.filename, file.file_path)
+# MinIO Configuration
+MINIO_ENDPOINT = "127.0.0.1:9000"
+MINIO_ACCESS_KEY = "E73DmxZVLQv5sldAZ7ia"
+MINIO_SECRET_KEY = "lX43QnpE0D6uhka2EwrXDosxoCQylC9uh8UwJAVU"
+MINIO_BUCKET_NAME = "lokbucket"
 
-    return [{"filename": file.filename, "file_path": file.file_path} for file in files]
+# Initialize MinIO client
+minio_client = Minio(
+    MINIO_ENDPOINT,
+    access_key=MINIO_ACCESS_KEY,
+    secret_key=MINIO_SECRET_KEY,
+    secure=False  # Set to True if using HTTPS
+)
+
+@router.get("/list-files")
+async def list_files():
+    try:
+        # Ensure the bucket exists
+        if not minio_client.bucket_exists(MINIO_BUCKET_NAME):
+            raise HTTPException(status_code=404, detail="Bucket does not exist")
+
+        # List objects (files) in the MinIO bucket
+        objects = minio_client.list_objects(MINIO_BUCKET_NAME)
+
+        # Collect file names
+        file_names = [obj.object_name for obj in objects]
+
+        if not file_names:
+            return {"message": "No files found in the bucket."}
+
+        return {"files": file_names}
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

@@ -1,34 +1,51 @@
-from fastapi import APIRouter, HTTPException, Depends
-import os
-from sqlalchemy.orm import Session
-from app.database import get_db
-from app.models import FileMetadata
-import csv
+from fastapi import FastAPI, HTTPException
+from fastapi.responses import StreamingResponse
+from minio import Minio
+from io import BytesIO
 
-router = APIRouter()
-STORAGE_PATH = "storage"
+# Initialize FastAPI
+app = FastAPI()
 
-@router.get("/preview/{filename}")
+# MinIO configuration
+MINIO_ENDPOINT = "your-minio-endpoint"  # Example: 'localhost:9000'
+MINIO_ACCESS_KEY = "your-access-key"
+MINIO_SECRET_KEY = "your-secret-key"
+MINIO_BUCKET_NAME = "your-bucket-name"
+
+# Initialize MinIO client
+minio_client = Minio(
+    MINIO_ENDPOINT,
+    access_key=MINIO_ACCESS_KEY,
+    secret_key=MINIO_SECRET_KEY,
+    secure=False  # Set to True if you are using HTTPS
+)
+
+@app.get("/preview/{filename}")
 async def preview_file(filename: str):
-    file_path = os.path.join(STORAGE_PATH, filename)
+    try:
+        # Check if the file exists in the MinIO bucket
+        if not minio_client.bucket_exists(MINIO_BUCKET_NAME):
+            raise HTTPException(status_code=404, detail="Bucket does not exist")
 
-    # Ensure the file exists
-    if not os.path.exists(file_path):
-        raise HTTPException(status_code=404, detail="File not found")
+        # Fetch the file from MinIO
+        try:
+            file_data = minio_client.get_object(MINIO_BUCKET_NAME, filename)
+        except Exception as e:
+            raise HTTPException(status_code=404, detail=f"File not found: {filename}")
 
-    # Handle different file types (CSV, TXT)
-    if filename.endswith(".csv"):
-        # Read CSV content
-        with open(file_path, "r") as file:
-            reader = csv.reader(file)
-            rows = [row for row in reader][:10]  # Return the first 10 rows as preview
-            return {"type": "csv", "content": rows}
+        # Determine content type based on file extension
+        file_extension = filename.split('.')[-1].lower()
+        if file_extension in ["jpg", "jpeg", "png", "gif"]:
+            media_type = "image/" + file_extension
+        elif file_extension in ["pdf"]:
+            media_type = "application/pdf"
+        elif file_extension in ["txt", "csv"]:
+            media_type = "text/plain"
+        else:
+            media_type = "application/octet-stream"  # Default for unknown file types
 
-    elif filename.endswith(".txt"):
-        # Read text file content
-        with open(file_path, "r") as file:
-            content = file.read(1024)  # Return the first 1KB of the file as preview
-            return {"type": "text", "content": content}
+        # Return the file as a StreamingResponse
+        return StreamingResponse(file_data, media_type=media_type)
 
-    else:
-        raise HTTPException(status_code=400, detail="Preview not supported for this file type")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
