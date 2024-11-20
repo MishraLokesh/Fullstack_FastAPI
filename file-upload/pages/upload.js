@@ -1,53 +1,86 @@
-import React, { useState } from "react";
-import axios from "axios";
+import { useState } from "react";
 
-export default function Upload() {
-  const [selectedFile, setSelectedFile] = useState(null);
+const Upload = () => {
+  const [file, setFile] = useState(null);
   const [uploadProgress, setUploadProgress] = useState(0);
-  const [message, setMessage] = useState("");
 
-  const handleFileChange = (e) => {
-    setSelectedFile(e.target.files[0]);
+  const CHUNK_SIZE = 1024 * 1024; // 1MB
+
+  const handleFileChange = (event) => {
+    setFile(event.target.files[0]);
   };
 
-  const handleUpload = async (e) => {
-    e.preventDefault();
-
-    if (!selectedFile) {
-      setMessage("Please select a file.");
+  const uploadFile = async () => {
+    if (!file) {
+      alert("Please select a file to upload.");
       return;
     }
 
-    const formData = new FormData();
-    formData.append("file", selectedFile);
+    const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
+    let uploadedChunks = 0;
 
-    try {
-      const response = await axios.post("http://localhost:8000/upload/chunk-resume", formData, {
-        headers: {
-          "Content-Type": "multipart/form-data",
-        },
-        onUploadProgress: (progressEvent) => {
-          const progress = Math.round((progressEvent.loaded / progressEvent.total) * 100);
-          setUploadProgress(progress);
-        },
-      });
+    for (let chunkIndex = 0; chunkIndex < totalChunks; chunkIndex++) {
+      const start = chunkIndex * CHUNK_SIZE;
+      const end = Math.min(start + CHUNK_SIZE, file.size);
+      const chunk = file.slice(start, end);
 
-      setMessage(response.data.message || "File uploaded successfully!");
-    } catch (err) {
-      console.error(err);
-      setMessage("Error uploading file.");
+      const formData = new FormData();
+      formData.append("filename", file.name);
+      formData.append("chunk_index", chunkIndex);
+      formData.append("total_chunks", totalChunks);
+      formData.append("file", chunk);
+
+      try {
+        const response = await fetch("http://127.0.0.1:8000/upload/upload", {
+          method: "POST",
+          body: formData,
+        });
+
+        if (!response.ok) {
+          throw new Error(`Failed to upload chunk ${chunkIndex}`);
+        }
+
+        uploadedChunks += 1;
+        setUploadProgress(Math.floor((uploadedChunks / totalChunks) * 100));
+      } catch (error) {
+        console.error("Error uploading file chunk:", error);
+        alert("Error uploading file. Please try again.");
+        return;
+      }
     }
+
+    alert("File uploaded successfully!");
   };
 
   return (
-    <div style={{ maxWidth: "600px", margin: "0 auto", padding: "20px" }}>
-      <h1>Upload File to MinIO</h1>
-      <form onSubmit={handleUpload}>
-        <input type="file" onChange={handleFileChange} />
-        <button type="submit" style={{ marginLeft: "10px" }}>Upload</button>
-      </form>
-      {uploadProgress > 0 && <p>Upload Progress: {uploadProgress}%</p>}
-      {message && <p>{message}</p>}
+    <div style={{ padding: "20px" }}>
+      <h1>Resumable File Upload</h1>
+      <input type="file" onChange={handleFileChange} />
+      <button onClick={uploadFile} disabled={!file}>
+        Upload
+      </button>
+      <div style={{ marginTop: "20px" }}>
+        <p>Upload Progress: {uploadProgress}%</p>
+        <div
+          style={{
+            height: "20px",
+            width: "100%",
+            backgroundColor: "#ccc",
+            position: "relative",
+          }}
+        >
+          <div
+            style={{
+              height: "100%",
+              width: `${uploadProgress}%`,
+              backgroundColor: "green",
+              transition: "width 0.5s ease-in-out",
+            }}
+          ></div>
+        </div>
+      </div>
     </div>
   );
-}
+};
+
+export default Upload;

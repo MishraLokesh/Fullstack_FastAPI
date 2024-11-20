@@ -1,57 +1,70 @@
-import React, { useEffect, useState } from "react";
-import axios from "axios";
+import { useState, useEffect } from 'react';
 
-export default function FileDetails() {
-  const [fileDetails, setFileDetails] = useState([]);
+const ListFiles = () => {
+  const [files, setFiles] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  const [error, setError] = useState(null);
 
   useEffect(() => {
-    const fetchFileDetails = async () => {
+    // Fetch the list of files from the backend API
+    const fetchFiles = async () => {
       try {
-        const response = await axios.get("http://127.0.0.1:8000/files/");
-        setFileDetails(response.data.files || []);
+        const response = await fetch('http://127.0.0.1:8000/files/list-files');
+        const data = await response.json();
+
+        if (response.ok) {
+          setFiles(data.files);
+        } else {
+          setError(data.message || 'Failed to fetch files.');
+        }
       } catch (err) {
-        setError("Failed to fetch file details");
-        console.error(err);
+        setError('An error occurred while fetching files.');
       } finally {
         setLoading(false);
       }
     };
 
-    fetchFileDetails();
+    fetchFiles();
   }, []);
 
-  if (loading) return <p>Loading...</p>;
-  if (error) return <p style={{ color: "red" }}>{error}</p>;
+  // Display a loading message or an error message if there is an issue
+  if (loading) {
+    return <div>Loading files...</div>;
+  }
+
+  if (error) {
+    return <div>Error: {error}</div>;
+  }
 
   return (
-    <div style={{ maxWidth: "600px", margin: "0 auto", padding: "20px" }}>
-      <h1>Uploaded File Details</h1>
-      {fileDetails.length > 0 ? (
-        <table border="1" style={{ width: "100%", borderCollapse: "collapse" }}>
-          <thead>
-            <tr>
-              <th>Filename</th>
-              <th>Size (bytes)</th>
-              <th>Upload Date</th>
-              <th>Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            {fileDetails.map((file, index) => (
-              <tr key={index}>
-                <td>{file.filename}</td>
-                <td>{file.file_size || "Unknown"}</td>
-                <td>{file.upload_date || "Unknown"}</td>
-                <td>{file.upload_status || "Unknown"}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      ) : (
-        <p>No files have been uploaded yet.</p>
-      )}
+    <div>
+      <h1>Uploaded Files</h1>
+      <ul>
+        {files.length > 0 ? (
+          files.map((file, index) => (
+            <li key={index}>
+              {file}
+              {/* Add buttons for download and preview */}
+              <button onClick={() => handleDownload(file)}>Download</button>
+              <button onClick={() => handlePreview(file)}>Preview</button>
+            </li>
+          ))
+        ) : (
+          <p>No files found in the bucket.</p>
+        )}
+      </ul>
     </div>
   );
-}
+
+  // Handle download file
+  const handleDownload = (filename) => {
+    window.location.href = `http://127.0.0.1:8000/files/download/${filename}`;
+  };
+
+  // Handle preview file
+  const handlePreview = (filename) => {
+    window.location.href = `http://127.0.0.1:8000/files/preview/${filename}`;
+  };
+};
+
+export default ListFiles;
