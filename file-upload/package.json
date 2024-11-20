@@ -2,17 +2,22 @@
   "name": "file-upload",
   "version": "0.1.0",
   "private": true,
+  "type": "module",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "test": "mocha api.test.js"
   },
   "dependencies": {
     "axios": "^1.7.7",
+    "chai": "^5.1.2",
+    "mocha": "^10.8.2",
     "next": "15.0.3",
     "react": "19.0.0-rc-66855b96-20241106",
     "react-dom": "19.0.0-rc-66855b96-20241106",
-    "react-dropzone": "^14.3.5"
+    "react-dropzone": "^14.3.5",
+    "supertest": "^7.0.0"
   }
 }
