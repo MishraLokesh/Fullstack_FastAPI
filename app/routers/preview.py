@@ -1,16 +1,16 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
 from minio import Minio
 from io import BytesIO
 
 # Initialize FastAPI
-app = FastAPI()
+router = APIRouter()
 
-# MinIO configuration
-MINIO_ENDPOINT = "your-minio-endpoint"  # Example: 'localhost:9000'
-MINIO_ACCESS_KEY = "your-access-key"
-MINIO_SECRET_KEY = "your-secret-key"
-MINIO_BUCKET_NAME = "your-bucket-name"
+# MinIO Configuration
+MINIO_ENDPOINT = "127.0.0.1:9000"
+MINIO_ACCESS_KEY = "E73DmxZVLQv5sldAZ7ia"
+MINIO_SECRET_KEY = "lX43QnpE0D6uhka2EwrXDosxoCQylC9uh8UwJAVU"
+MINIO_BUCKET_NAME = "lokbucket"
 
 # Initialize MinIO client
 minio_client = Minio(
@@ -20,7 +20,7 @@ minio_client = Minio(
     secure=False  # Set to True if you are using HTTPS
 )
 
-@app.get("/preview/{filename}")
+@router.get("/preview/{filename}")
 async def preview_file(filename: str):
     try:
         # Check if the file exists in the MinIO bucket
