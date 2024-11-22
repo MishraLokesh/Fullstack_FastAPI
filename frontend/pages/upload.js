@@ -8,6 +8,7 @@ const Upload = () => {
 
   const handleFileChange = (event) => {
     setFile(event.target.files[0]);
+    setUploadProgress(0);  // Reset the progress bar to 0
   };
 
   const uploadFile = async () => {
@@ -35,7 +36,9 @@ const Upload = () => {
           method: "POST",
           body: formData,
         });
-
+        // Log response body (assuming it's JSON)
+        const responseBody = await response.json(); // Use `.text()` or `.blob()` if the response isn't JSON
+        console.log("Response Body:", responseBody);
         if (!response.ok) {
           throw new Error(`Failed to upload chunk ${chunkIndex}`);
         }

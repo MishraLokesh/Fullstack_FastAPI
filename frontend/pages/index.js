@@ -13,7 +13,10 @@ export default function Home() {
           <button style={buttonStyle}>List Files</button>
         </Link>
         <Link href="/preview">
-          <button style={buttonStyle}>Preview & Download Files</button>
+          <button style={buttonStyle}>Preview Files</button>
+        </Link>
+        <Link href="/download">
+          <button style={buttonStyle}>Download Files</button>
         </Link>
       </div>
     </div>

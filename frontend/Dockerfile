@@ -1,5 +1,5 @@
 # Use the official Node.js image from Docker Hub
-FROM node:16
+FROM node:18
 
 # Set the working directory
 WORKDIR /app
@@ -12,8 +12,11 @@ RUN npm install
 # Copy the rest of the project files
 COPY . /app
 
+# Build the Next.js application
+RUN npm run build
+
 # Expose the port Next.js will run on
-EXPOSE 3001
+EXPOSE 3000
 
 # Command to run the Next.js application in production mode
-CMD ["npm", "run", "start", "--", "--hostname", "localhost"]
+CMD ["npm", "run", "start", "--", "--hostname", "0.0.0.0"]

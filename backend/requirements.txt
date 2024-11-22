@@ -1,0 +1,6 @@
+fastapi
+uvicorn
+minio
+python-dotenv
+sqlalchemy
+python-multipart

@@ -45,8 +45,8 @@ const ListFiles = () => {
             <li key={index}>
               {file}
               {/* Add buttons for download and preview */}
-              <button onClick={() => handleDownload(file)}>Download</button>
-              <button onClick={() => handlePreview(file)}>Preview</button>
+              {/* <button onClick={() => handleDownload(file)}>Download</button> */}
+              {/* <button onClick={() => handlePreview(file)}>Preview</button> */}
             </li>
           ))
         ) : (
