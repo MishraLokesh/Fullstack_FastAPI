@@ -46,3 +46,55 @@ The credentials for cloud storage (such as access key, secret key, and endpoint)
 - **Error Handling**: The system assumes the backend will handle most errors (e.g., file size limitations, storage issues, file format errors) gracefully by returning meaningful error messages to the user.
 
 - **File Validation**: The system assesses the file type while previewing the file. It is required as preview works differently for different types of files.
+
+
+# Project Setup Instructions
+
+## Prerequisites
+1. **MinIO** must be running locally on your system.
+2. Ensure Docker and Docker Compose are installed on your machine.
+
+---
+
+## Backend Setup
+
+### 1. Update the `.env` File
+Edit the `.env` file in the `backend` directory with the following values:
+- **MINIO_ENDPOINT**: Set this to your host's IP address. You can find your host IP by running the following command:
+  ```bash
+  hostname -I | awk '{print $1}'
+- **MINIO_ACCESS_KEY**: Use the MinIO access key.
+- **MINIO_SECRET_KEY**: Use the MinIO secret key.
+- **MINIO_BUCKET_NAME**: Use the MinIO bucket name.
+
+### 2. Update MinIO Credentials in Backend Code
+Edit the following files in the backend/app/routers directory to match the MinIO credentials:
+- **upload.py**
+- **upload.py**
+- **upload.py**
+- **upload.py**
+
+### 3. Docker Compose Configuration
+Update docker-compose.yml file with the following values:
+- **MINIO_ENDPOINT**: Set this to your host's IP address. You can find your host IP by running the following command:
+  ```bash
+  hostname -I | awk '{print $1}'
+- **MINIO_ACCESS_KEY**: Use the MinIO access key.
+- **MINIO_SECRET_KEY**: Use the MinIO secret key.
+
+### 4. Running the project
+```bash
+  docker-compose up --build
+```
+
+### 5. Additional Notes
+  MinIO Accessibility: Ensure MinIO is accessible from the host IP and port 9000.
+
+### 6. Accessibility
+  Access the frontend on:
+  ```bash
+    localhost:3000
+  ```
+  And the backend on:
+  ```bash
+    localhost:8000 or localhost:8000/docs
